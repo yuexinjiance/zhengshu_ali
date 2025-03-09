@@ -1,0 +1,26 @@
+name: SSH Connection Test
+
+on:
+  push:
+    branches: [ "main" ]   # 当main分支有push时触发
+  workflow_dispatch:       # 允许手动触发测试
+
+jobs:
+  test-connection:
+    runs-on: ubuntu-latest
+    steps:
+      # 步骤1：检出代码（非必须，但建议保留）
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 步骤2：SSH连接测试
+      - name: SSH Connection Test
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: root   # 改为你的服务器用户名
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            echo "=== 连接成功 ==="
+            echo "当前时间：$(date)"
+            echo "系统信息：$(uname -a)"
