@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>品牌修改 - 浙江越新检测</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <nav class="nav-menu">
+            <a href="/" class="nav-item">首页</a>
+            <a href="/generate" class="nav-item">证书生成</a>
+            <a href="/brand" class="nav-item active">品牌修改</a>
+            <a href="/problem" class="nav-item">故障探头</a>
+        </nav>
+        
+        <div class="form-container">
+            <h2 class="section-title">品牌修改工具</h2>
+            
+            <form id="processForm">
+                <div class="form-group">
+                    <label for="company_name">公司文件夹名称：</label>
+                    <input type="text" id="company_name" name="company_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="probe_numbers">探头序号列表：</label>
+                    <input type="text" id="probe_numbers" name="probe_numbers" required>
+                    <small>格式：单个数字或范围，例如：1-3 5 7-9</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="product_company">产品公司：</label>
+                    <select id="product_company" name="product_company" required>
+                        <option value="">请选择产品公司</option>
+                        {% for brand_name, brand_info in brands_data.items() %}
+                        <option value="{{ brand_name }}">{{ brand_info.fullname }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="product_model">产品型号：</label>
+                    <select id="product_model" name="product_model" required disabled>
+                        <option value="">请先选择产品公司</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    <span class="btn-text">提交处理</span>
+                    <div class="btn-loader"></div>
+                </button>
+            </form>
+            <div id="result" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        // 存储品牌数据
+        const brandsData = {{ brands_data | tojson }};
+        console.log('前端收到的品牌数据:', brandsData);
+        // 打印第一个品牌的完整数据结构
+        const firstBrand = Object.values(brandsData)[0];
+        console.log('第一个品牌的完整数据:', firstBrand);
+        
+        // 品牌选择变化时更新型号选项
+        document.getElementById('product_company').addEventListener('change', function() {
+            const modelSelect = document.getElementById('product_model');
+            const selectedBrand = this.value;
+            console.log('选择的品牌:', selectedBrand);
+            console.log('该品牌的数据:', brandsData[selectedBrand]);
+            
+            // 清空现有选项
+            modelSelect.innerHTML = '';
+            
+            if (selectedBrand && brandsData[selectedBrand]) {
+                // 启用型号选择
+                modelSelect.disabled = false;
+                
+                // 添加默认选项
+                modelSelect.add(new Option('请选择型号', ''));
+                
+                // 添加该品牌的所有型号
+                const models = brandsData[selectedBrand].list;
+                console.log('型号列表:', models);
+                
+                if (Array.isArray(models)) {
+                    models.forEach(model => {
+                        modelSelect.add(new Option(model, model));
+                    });
+                }
+            } else {
+                // 如果未选择品牌，禁用型号选择
+                modelSelect.disabled = true;
+                modelSelect.add(new Option('请先选择产品公司', ''));
+            }
+        });
+
+        document.getElementById('processForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const response = await fetch('/process/brand', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || `HTTP error! status: ${response.status}`);
+                }
+                
+                console.log('服务器响应:', data);
+                resultDiv.innerHTML = `<p class="${data.status}">${data.message}</p>`;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `<p class="error">处理失败：${error.message}</p>`;
+            }
+        });
+    </script>
+</body>
+</html> 

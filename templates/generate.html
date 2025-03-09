@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>证书生成 - 浙江越新检测</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <nav class="nav-menu">
+            <a href="/" class="nav-item">首页</a>
+            <a href="/generate" class="nav-item active">证书生成</a>
+            <a href="/brand" class="nav-item">品牌修改</a>
+            <a href="/problem" class="nav-item">故障探头</a>
+        </nav>
+        
+        <div class="form-container">
+            <h2 class="section-title">证书生成工具</h2>
+
+            <form id="generateForm" class="animated-form">
+                <div class="form-group">
+                    <label for="company_name">公司名称</label>
+                    <input type="text" id="company_name" name="company_name" required 
+                           class="modern-input" placeholder="请输入公司名称">
+                </div>
+
+                <div class="form-group">
+                    <label for="all_nums">探头总数量</label>
+                    <input type="number" id="all_nums" name="all_nums" required min="1"
+                           class="modern-input" placeholder="请输入探头总数">
+                </div>
+
+                <div class="form-group">
+                    <label for="date">检测日期</label>
+                    <input type="date" id="date" name="date" required
+                           class="modern-input">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label for="temperature">温度（°C）</label>
+                        <input type="number" id="temperature" name="temperature" step="0.1" required
+                               class="modern-input" placeholder="如: 20.0">
+                    </div>
+
+                    <div class="form-group half">
+                        <label for="humidity">湿度（%）</label>
+                        <input type="number" id="humidity" name="humidity" required min="0" max="100"
+                               class="modern-input" placeholder="如: 50">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="sections">探头分布区域</label>
+                    <input type="text" id="sections" name="sections" required
+                           class="modern-input" placeholder="多个区域用空格或逗号分隔">
+                </div>
+
+                <div class="form-group">
+                    <label for="sections_num">各区域探头数量</label>
+                    <input type="text" id="sections_num" name="sections_num" required
+                           class="modern-input" placeholder="多个数量用空格或逗号分隔">
+                </div>
+
+                <div class="form-group">
+                    <label for="start_num">探头起始编号</label>
+                    <input type="number" id="start_num" name="start_num" required min="1"
+                           class="modern-input" placeholder="请输入起始编号">
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    <span class="btn-text">生成证书</span>
+                    <div class="btn-loader"></div>
+                </button>
+            </form>
+
+            <div id="message" class="message-modern"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const generateForm = document.getElementById('generateForm');
+            const messageDiv = document.getElementById('message');
+            const dateInput = document.getElementById('date');
+
+            // 设置日期默认值
+            if (dateInput) {
+                const today = new Date().toISOString().split('T')[0];
+                dateInput.value = today;
+            }
+
+            // 设置默认值
+            document.getElementById('temperature').value = '20.0';
+            document.getElementById('humidity').value = '50';
+            document.getElementById('start_num').value = '1';
+
+            if (generateForm && messageDiv) {
+                generateForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const submitButton = generateForm.querySelector('.submit-btn');
+
+                    try {
+                        // 获取并解析区域名称（支持空格或逗号分隔）
+                        const sectionsStr = document.getElementById('sections').value.trim();
+                        const sections = sectionsStr
+                            .split(/[\s,，]+/)  // 使用相同的分隔符规则
+                            .map(s => s.trim())
+                            .filter(s => s);
+
+                        // 获取并解析区域数量（支持空格或逗号分隔）
+                        const sectionsNumStr = document.getElementById('sections_num').value.trim();
+                        const sectionsNum = sectionsNumStr
+                            .split(/[\s,，]+/)
+                            .map(n => parseInt(n.trim()))
+                            .filter(n => !isNaN(n));
+
+                        const allNums = parseInt(document.getElementById('all_nums').value);
+
+                        // 验证数据
+                        if (sections.length === 0 || sectionsNum.length === 0) {
+                            throw new Error('请填写探头分布区域和对应的数量');
+                        }
+
+                        if (sections.length !== sectionsNum.length) {
+                            throw new Error(
+                                `区域数量与探头数量分布不匹配\n` +
+                                `区域：${sections.join(', ')}\n` +
+                                `数量：${sectionsNum.join(', ')}`
+                            );
+                        }
+
+                        const totalProbes = sectionsNum.reduce((a, b) => a + b, 0);
+                        if (totalProbes !== allNums) {
+                            throw new Error(
+                                `各区域探头数量之和与总数量不匹配\n` +
+                                `总数量：${allNums}\n` +
+                                `各区域：${sections.map((s, i) => `${s}(${sectionsNum[i]})`).join(', ')}\n` +
+                                `数量之和：${totalProbes}`
+                            );
+                        }
+
+                        // 提交表单
+                        submitButton.classList.add('loading');
+                        messageDiv.textContent = '正在生成证书...';
+                        messageDiv.className = 'message info';
+
+                        const formData = new FormData(generateForm);
+                        const response = await fetch('/process/generate', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok) {
+                            messageDiv.textContent = result.message;
+                            messageDiv.className = 'message success';
+                        } else {
+                            throw new Error(result.message || '生成证书失败');
+                        }
+                    } catch (error) {
+                        console.error('错误详情：', error);
+                        messageDiv.textContent = `处理失败：${error.message}`;
+                        messageDiv.className = 'message error';
+                    } finally {
+                        submitButton.classList.remove('loading');
+                    }
+                });
+
+                // 添加输入提示
+                const sectionsInput = document.getElementById('sections');
+                const sectionsNumInput = document.getElementById('sections_num');
+                
+                if (sectionsInput) {
+                    sectionsInput.placeholder = "例如：厨房 大厅 或 厨房,大厅";  // 更新提示文本
+                }
+                if (sectionsNumInput) {
+                    sectionsNumInput.placeholder = "例如：4 6 或 4,6";  // 更新提示文本
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

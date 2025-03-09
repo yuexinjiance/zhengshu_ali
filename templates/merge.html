@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>合并证书 - 浙江越新检测</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <nav class="nav-menu">
+            <a href="/" class="nav-item">首页</a>
+            <a href="/generate" class="nav-item">证书生成</a>
+            <a href="/brand" class="nav-item">品牌修改</a>
+            <a href="/problem" class="nav-item">故障探头</a>
+            <a href="/pdf" class="nav-item">PDF合并</a>
+            <a href="/merge" class="nav-item active">Word合并</a>
+        </nav>
+        
+        <div class="form-container">
+            <h2 class="section-title">Word证书合并工具</h2>
+            <form id="mergeForm" class="animated-form">
+                <div class="form-group">
+                    <label for="company_folder">公司文件夹名称</label>
+                    <input 
+                        type="text" 
+                        id="company_folder" 
+                        name="company_folder" 
+                        required 
+                        placeholder="例如：河南某个有限公司20250305"
+                        autocomplete="off"
+                    >
+                </div>
+                <button type="submit" class="submit-btn">
+                    <span class="btn-text">合并Word</span>
+                    <div class="btn-loader"></div>
+                </button>
+            </form>
+            
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress" id="progressBar"></div>
+                </div>
+                <div class="progress-text" id="progressText">准备处理...</div>
+            </div>
+            
+            <div id="message" class="message"></div>
+            
+            <div id="downloadContainer" style="display: none; margin-top: 20px; text-align: center;">
+                <a id="downloadButton" class="download-btn">
+                    <span class="btn-text">下载Word文件</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('mergeForm');
+            const messageDiv = document.getElementById('message');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const downloadContainer = document.getElementById('downloadContainer');
+            const downloadButton = document.getElementById('downloadButton');
+            
+            if (form) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const button = form.querySelector('.submit-btn');
+                    downloadContainer.style.display = 'none';
+                    
+                    try {
+                        button.classList.add('loading');
+                        messageDiv.textContent = '正在处理...';
+                        messageDiv.className = 'message info';
+                        
+                        progressContainer.style.display = 'block';
+                        progressBar.style.width = '0%';
+                        progressText.textContent = '准备处理...';
+
+                        const formData = new FormData(form);
+                        const response = await fetch('/process/merge', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (response.status !== 200 || result.status === 'error') {
+                            throw new Error(result.message || '处理失败');
+                        }
+                        
+                        const eventSource = new EventSource(`/process/merge/progress/${result.request_id}`);
+                        
+                        eventSource.onmessage = function(event) {
+                            const data = JSON.parse(event.data);
+                            if (data.progress !== undefined) {
+                                const progress = Math.round(data.progress * 100);
+                                progressBar.style.width = `${progress}%`;
+                                progressText.textContent = data.message || `处理中: ${progress}%`;
+                                
+                                if (data.status === 'completed') {
+                                    eventSource.close();
+                                    messageDiv.textContent = 'Word文件已合并完成！';
+                                    messageDiv.className = 'message success';
+                                    
+                                    downloadContainer.style.display = 'block';
+                                    downloadButton.href = `/download/merge/${result.request_id}`;
+                                }
+                            }
+                        };
+                        
+                        eventSource.onerror = function() {
+                            eventSource.close();
+                            throw new Error('处理过程中断，请检查文件夹名称是否正确');
+                        };
+
+                    } catch (error) {
+                        console.error('错误详情：', error);
+                        messageDiv.textContent = `处理失败：${error.message}`;
+                        messageDiv.className = 'message error';
+                        progressContainer.style.display = 'none';
+                    } finally {
+                        button.classList.remove('loading');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

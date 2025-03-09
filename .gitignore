@@ -1,0 +1,16 @@
+# Python通用模板
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.so
+.Python
+
+# 虚拟环境目录
+venv/
+.env/
+env/
+ENV/
+
+# IDE配置文件
+.vscode/
+.idea/

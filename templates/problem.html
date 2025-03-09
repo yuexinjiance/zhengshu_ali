@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>故障探头处理 - 文档处理系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <nav class="nav-menu">
+            <a href="/" class="nav-item">首页</a>
+            <a href="/generate" class="nav-item">证书生成</a>
+            <a href="/brand" class="nav-item">品牌修改</a>
+            <a href="/problem" class="nav-item active">故障探头</a>
+        </nav>
+        
+        <div class="form-container">
+            <h2 class="section-title">故障探头处理工具</h2>
+            <form id="processForm">
+                <div class="form-group">
+                    <label for="company_name">公司文件夹名称：</label>
+                    <input type="text" id="company_name" name="company_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="probe_numbers">探头序号列表：</label>
+                    <input type="text" id="probe_numbers" name="probe_numbers" required>
+                    <small>格式：单个数字或范围，例如：1-3 5 7-9</small>
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    <span class="btn-text">提交处理</span>
+                    <div class="btn-loader"></div>
+                </button>
+            </form>
+            <div id="result" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('processForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const response = await fetch('/process/problem', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<p class="${data.status}">${data.message}</p>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">处理失败：${error.message}</p>`;
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html> 

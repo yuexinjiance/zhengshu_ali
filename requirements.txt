@@ -1,0 +1,12 @@
+fastapi
+python-docx
+uvicorn
+jinja2
+python-multipart
+requests
+docxtpl
+PyPDF2
+docx2pdf
+pypdf
+sse-starlette
+aiofiles

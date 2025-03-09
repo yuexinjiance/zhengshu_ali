@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF合并 - 浙江越新检测</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+    <style>
+        .progress-container {
+            width: 100%;
+            margin: 20px 0;
+            display: none;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress {
+            width: 0%;
+            height: 100%;
+            background-color: #4CAF50;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            margin-top: 5px;
+            font-size: 14px;
+            color: #666;
+        }
+        .download-btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #34a853, #28873f);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 168, 83, 0.2);
+            cursor: pointer;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 168, 83, 0.3);
+            background: linear-gradient(135deg, #2d9147, #216f34);
+        }
+        
+        .download-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(52, 168, 83, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="nav-menu">
+            <a href="/" class="nav-item">首页</a>
+            <a href="/generate" class="nav-item">证书生成</a>
+            <a href="/brand" class="nav-item">品牌修改</a>
+            <a href="/problem" class="nav-item">故障探头</a>
+            <a href="/pdf" class="nav-item active">PDF合并</a>
+        </nav>
+        
+        <div class="form-container">
+            <h2 class="section-title">PDF合并工具</h2>
+            <form id="pdfForm" class="animated-form">
+                <div class="form-group">
+                    <label for="company_folder">公司文件夹名称</label>
+                    <input 
+                        type="text" 
+                        id="company_folder" 
+                        name="company_folder" 
+                        required 
+                        placeholder="例如：河南某个有限公司20250305"
+                        autocomplete="off"
+                    >
+                </div>
+                <button type="submit" class="submit-btn">
+                    <span class="btn-text">合并PDF</span>
+                    <div class="btn-loader"></div>
+                </button>
+            </form>
+            
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress" id="progressBar"></div>
+                </div>
+                <div class="progress-text" id="progressText">准备处理...</div>
+            </div>
+            
+            <div id="message" class="message"></div>
+            
+            <div id="downloadContainer" style="display: none; margin-top: 20px; text-align: center;">
+                <a id="downloadButton" class="download-btn">
+                    <span class="btn-text">下载PDF文件</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('pdfForm');
+            const messageDiv = document.getElementById('message');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const downloadContainer = document.getElementById('downloadContainer');
+            const downloadButton = document.getElementById('downloadButton');
+            
+            if (form) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const button = form.querySelector('.submit-btn');
+                    downloadContainer.style.display = 'none';
+                    
+                    try {
+                        button.classList.add('loading');
+                        messageDiv.textContent = '正在处理...';
+                        messageDiv.className = 'message info';
+                        
+                        progressContainer.style.display = 'block';
+                        progressBar.style.width = '0%';
+                        progressText.textContent = '准备处理...';
+
+                        const formData = new FormData(form);
+                        const response = await fetch('/process/pdf', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (response.status !== 200 || result.status === 'error') {
+                            throw new Error(result.message || '处理失败');
+                        }
+                        
+                        const eventSource = new EventSource(`/process/pdf/progress/${result.request_id}`);
+                        
+                        eventSource.onmessage = function(event) {
+                            const data = JSON.parse(event.data);
+                            if (data.progress !== undefined) {
+                                const progress = Math.round(data.progress * 100);
+                                progressBar.style.width = `${progress}%`;
+                                progressText.textContent = data.message || `处理中: ${progress}%`;
+                                
+                                if (data.status === 'completed') {
+                                    eventSource.close();
+                                    messageDiv.textContent = 'PDF文件已合并完成！';
+                                    messageDiv.className = 'message success';
+                                    
+                                    downloadContainer.style.display = 'block';
+                                    downloadButton.href = `/download/${result.request_id}`;
+                                }
+                            }
+                        };
+                        
+                        eventSource.onerror = function() {
+                            eventSource.close();
+                            throw new Error('处理过程中断，请检查文件夹名称是否正确');
+                        };
+
+                    } catch (error) {
+                        console.error('错误详情：', error);
+                        messageDiv.textContent = `处理失败：${error.message}`;
+                        messageDiv.className = 'message error';
+                        progressContainer.style.display = 'none';
+                    } finally {
+                        button.classList.remove('loading');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

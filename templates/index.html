@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>浙江越新检测证书生成</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+    <style>
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 50px;
+            padding: 20px;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 250px;
+            text-decoration: none;
+            color: #333;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .feature-card.generate {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+        }
+
+        .feature-card.brand {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+        }
+
+        .feature-card.problem {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        .feature-card.pdf {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .feature-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: white;
+        }
+
+        .feature-description {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.5;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1024px) {
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="main-title">
+            <span data-text="浙江越鑫检测证书生成">浙江越新检测证书生成</span>
+        </h1>
+        
+        <nav class="nav-menu">
+            <a href="/" class="nav-item active">首页</a>
+            <a href="/generate" class="nav-item">证书生成</a>
+            <a href="/brand" class="nav-item">品牌修改</a>
+            <a href="/problem" class="nav-item">故障探头</a>
+            <a href="/download" class="nav-item">文件下载</a>
+        </nav>
+        
+        <div class="feature-grid">
+            <a href="/generate" class="feature-card generate">
+                <div class="feature-icon">📋</div>
+                <h2 class="feature-title">证书生成</h2>
+                <p class="feature-description">生成新的检测证书文档</p>
+            </a>
+            
+            <a href="/brand" class="feature-card brand">
+                <div class="feature-icon">🏢</div>
+                <h2 class="feature-title">品牌修改</h2>
+                <p class="feature-description">修改证书中的品牌和型号信息</p>
+            </a>
+            
+            <a href="/problem" class="feature-card problem">
+                <div class="feature-icon">🔧</div>
+                <h2 class="feature-title">故障探头</h2>
+                <p class="feature-description">处理和修改故障探头相关信息</p>
+            </a>
+            
+            <a href="/pdf" class="feature-card pdf">
+                <div class="feature-icon">📄</div>
+                <h2 class="feature-title">PDF合并</h2>
+                <p class="feature-description">将多个文件合并为单个PDF文档</p>
+            </a>
+        </div>
+    </div>
+</body>
+</html> 
