@@ -13,7 +13,7 @@ jobs:
 
     - name: Docker Build & Push
       run: |
-        docker build -t registry.cn-hangzhou.aliyuncs.com/your-ns/your-app:${{ github.sha }} .
+        docker build -t registry.cn-hangzhou.aliyuncs.com/sanmao666/sanmao666:${{ github.sha }} .
         docker login -u ${{ secrets.ACR_USER }} -p ${{ secrets.ACR_PASSWORD }} registry.cn-hangzhou.aliyuncs.com
         docker push registry.cn-hangzhou.aliyuncs.com/sanmao666/sanmao666:${{ github.sha }}
 
@@ -25,7 +25,7 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         script: |
           docker pull registry.cn-hangzhou.aliyuncs.com/sanmao666/sanmao666:${{ github.sha }}
-          docker stop your-app || true
-          docker rm your-app || true
-          docker run -d --name your-app -p 5321:5321 \
+          docker stop jiancezhengshu || true
+          docker rm jiancezhengshu || true
+          docker run -d --name jiancezhengshu -p 5321:5321 \
             registry.cn-hangzhou.aliyuncs.com/sanmao666/sanmao666:${{ github.sha }}

@@ -4,17 +4,21 @@ FROM registry.cn-hangzhou.aliyuncs.com/strangerbell/python:3.10.13-slim-bullseye
 # 设置工作目录
 WORKDIR /app
 
-# 替换为阿里云源
-RUN echo \
-    deb https://mirrors.aliyun.com/debian/ bullseye main non-free contrib \
-    deb https://mirrors.aliyun.com/debian/ bullseye-updates main non-free contrib \
-    deb https://mirrors.aliyun.com/debian/ bullseye-backports main non-free contrib \
-    deb https://mirrors.aliyun.com/debian-security bullseye-security main non-free contrib \
-    > /etc/apt/sources.list
+# 使用清华大学镜像源
+RUN echo '\
+deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bullseye main contrib non-free\n\
+deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bullseye-updates main contrib non-free\n\
+deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bullseye-backports main contrib non-free\n\
+deb https://mirrors.tuna.tsinghua.edu.cn/debian-security bullseye-security main contrib non-free\n'\
+> /etc/apt/sources.list
 
 # 安装系统依赖
-RUN apt-get update && apt-get install -y \
-    libreoffice \
+RUN apt-get clean && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libreoffice-writer \
+    libreoffice-common \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制项目文件
@@ -28,7 +32,6 @@ COPY templates/ templates/
 
 # 安装 Python 依赖
 RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-
 
 # 创建数据目录
 RUN mkdir -p /app/data
