@@ -1,0 +1,31 @@
+name: Auto Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Docker Build & Push
+      run: |
+        docker build -t registry.cn-hangzhou.aliyuncs.com/your-ns/your-app:${{ github.sha }} .
+        docker login -u ${{ secrets.ACR_USER }} -p ${{ secrets.ACR_PASSWORD }} registry.cn-hangzhou.aliyuncs.com
+        docker push registry.cn-hangzhou.aliyuncs.com/your-ns/your-app:${{ github.sha }}
+
+    - name: Deploy to Server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: root
+        key: ${{ secrets.SSH_KEY }}
+        script: |
+          docker pull registry.cn-hangzhou.aliyuncs.com/your-ns/your-app:${{ github.sha }}
+          docker stop your-app || true
+          docker rm your-app || true
+          docker run -d --name your-app -p 80:3000 \
+            registry.cn-hangzhou.aliyuncs.com/your-ns/your-app:${{ github.sha }}
