@@ -18,7 +18,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SERVER_IP }}
-          username: root   # 改为你的服务器用户名
+          username: lipengyu20082000@126.com   # 改为你的服务器用户名
           key: ${{ secrets.SSH_KEY }}
           script: |
             echo "=== 连接成功 ==="
