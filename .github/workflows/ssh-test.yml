@@ -15,7 +15,7 @@ jobs:
 
       # 步骤2：SSH连接测试
       - name: SSH Connection Test
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SERVER_IP }}
           username: root   # 改为你的服务器用户名
