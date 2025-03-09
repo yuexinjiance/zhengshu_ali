@@ -13,7 +13,7 @@ jobs:
 
     - name: Docker Build & Push
       run: |
-        docker build -t registry.cn-hangzhou.aliyuncs.com/sanmao666/sanmao666:${{ github.sha }} .
+        docker build -t crpi-dcf0z79gs3awh4x6.cn-hangzhou.personal.cr.aliyuncs.com/sanmao666/sanmao666:${{ github.sha }} .
         docker login -u ${{ secrets.ACR_USER }} -p ${{ secrets.ACR_PASSWORD }} crpi-dcf0z79gs3awh4x6.cn-hangzhou.personal.cr.aliyuncs.com
         docker push crpi-dcf0z79gs3awh4x6.cn-hangzhou.personal.cr.aliyuncs.com/sanmao666/sanmao666:${{ github.sha }}
 
@@ -24,7 +24,7 @@ jobs:
         username: lipengyu20082000@126.com
         key: ${{ secrets.SSH_KEY }}
         script: |
-          docker crpi-dcf0z79gs3awh4x6.cn-hangzhou.personal.cr.aliyuncs.com/sanmao666/sanmao666:${{ github.sha }}
+          docker pull crpi-dcf0z79gs3awh4x6.cn-hangzhou.personal.cr.aliyuncs.com/sanmao666/sanmao666:${{ github.sha }}
           docker stop zhengshu || true
           docker rm zhengshu || true
           docker run -d --name zhengshu -p 5321:5321 \
