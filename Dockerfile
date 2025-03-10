@@ -30,10 +30,14 @@ COPY table_refer.docx .
 COPY static/ static/
 COPY templates/ templates/
 
-# 安装 Python 依赖
-# 安装 Python 依赖
-RUN pip install --no-cache-dir -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/ \
-    && pip install --upgrade pip
+# 配置 pip 并安装 Python 依赖
+RUN mkdir -p /root/.pip && \
+    echo "[global]\n\
+index-url = https://mirrors.aliyun.com/pypi/simple/\n\
+trusted-host = mirrors.aliyun.com\n\
+timeout = 120\n\
+retries = 10" > /root/.pip/pip.conf && \
+    pip install --no-cache-dir -r requirements.txt
 
 # 创建数据目录
 RUN mkdir -p /app/data
