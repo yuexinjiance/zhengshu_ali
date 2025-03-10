@@ -5,6 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>品牌修改 - 浙江越新检测</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+    <style>
+        .autocomplete-items {
+            position: absolute;
+            border: 1px solid #ddd;
+            border-top: none;
+            z-index: 99;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .autocomplete-items div {
+            padding: 10px;
+            cursor: pointer;
+        }
+        
+        .autocomplete-items div:hover {
+            background-color: #e9e9e9;
+        }
+        
+        .form-group {
+            position: relative;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -13,20 +39,36 @@
             <a href="/generate" class="nav-item">证书生成</a>
             <a href="/brand" class="nav-item active">品牌修改</a>
             <a href="/problem" class="nav-item">故障探头</a>
+            <a href="/download" class="nav-item">证书下载</a>
         </nav>
         
         <div class="form-container">
             <h2 class="section-title">品牌修改工具</h2>
             
-            <form id="processForm">
+            <form id="processForm" class="animated-form">
                 <div class="form-group">
                     <label for="company_name">公司文件夹名称：</label>
-                    <input type="text" id="company_name" name="company_name" required>
+                    <input 
+                        type="text" 
+                        id="company_name" 
+                        name="company_name" 
+                        required 
+                        placeholder="例如：河南某个有限公司20250305"
+                        autocomplete="off"
+                    >
+                    <div id="company-autocomplete-list" class="autocomplete-items"></div>
                 </div>
                 
                 <div class="form-group">
                     <label for="probe_numbers">探头序号列表：</label>
-                    <input type="text" id="probe_numbers" name="probe_numbers" required>
+                    <input 
+                        type="text" 
+                        id="probe_numbers" 
+                        name="probe_numbers" 
+                        required
+                        placeholder="格式：单个数字或范围，例如：1-3 5 7-9"
+                        autocomplete="off"
+                    >
                     <small>格式：单个数字或范围，例如：1-3 5 7-9</small>
                 </div>
 
@@ -60,9 +102,86 @@
         // 存储品牌数据
         const brandsData = {{ brands_data | tojson }};
         console.log('前端收到的品牌数据:', brandsData);
-        // 打印第一个品牌的完整数据结构
-        const firstBrand = Object.values(brandsData)[0];
-        console.log('第一个品牌的完整数据:', firstBrand);
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const companyInput = document.getElementById('company_name');
+            const probeInput = document.getElementById('probe_numbers');
+            const companyAutocomplete = document.getElementById('company-autocomplete-list');
+            
+            // 获取文件夹列表
+            async function getFolders() {
+                try {
+                    const response = await fetch('/api/folders');
+                    if (!response.ok) {
+                        throw new Error('获取文件夹列表失败');
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error:', error);
+                    return [];
+                }
+            }
+            
+            // 获取文件夹中的文件数量
+            async function getFileCount(folderName) {
+                try {
+                    const response = await fetch(`/api/file_count?folder=${encodeURIComponent(folderName)}`);
+                    if (!response.ok) {
+                        throw new Error('获取文件数量失败');
+                    }
+                    const data = await response.json();
+                    return data.count;
+                } catch (error) {
+                    console.error('Error:', error);
+                    return 0;
+                }
+            }
+            
+            // 显示自动完成列表
+            async function showAutocomplete() {
+                const folders = await getFolders();
+                const inputValue = companyInput.value.toLowerCase();
+                
+                companyAutocomplete.innerHTML = '';
+                
+                const matchedFolders = folders.filter(folder => 
+                    folder.toLowerCase().includes(inputValue)
+                );
+                
+                matchedFolders.forEach(folder => {
+                    const div = document.createElement('div');
+                    div.textContent = folder;
+                    div.addEventListener('click', async function() {
+                        companyInput.value = folder;
+                        companyAutocomplete.innerHTML = '';
+                        
+                        // 更新探头序号列表的 placeholder
+                        const fileCount = await getFileCount(folder);
+                        probeInput.placeholder = `共${fileCount}个探头可选择`;
+                    });
+                    companyAutocomplete.appendChild(div);
+                });
+            }
+            
+            // 公司输入框事件监听
+            companyInput.addEventListener('focus', showAutocomplete);
+            companyInput.addEventListener('input', showAutocomplete);
+            
+            // 公司输入框失去焦点时更新探头序号列表的 placeholder
+            companyInput.addEventListener('blur', async function() {
+                if (companyInput.value) {
+                    const fileCount = await getFileCount(companyInput.value);
+                    probeInput.placeholder = `共${fileCount}个探头可选择`;
+                }
+            });
+            
+            // 点击其他地方时关闭自动完成列表
+            document.addEventListener('click', function(e) {
+                if (e.target !== companyInput) {
+                    companyAutocomplete.innerHTML = '';
+                }
+            });
+        });
         
         // 品牌选择变化时更新型号选项
         document.getElementById('product_company').addEventListener('change', function() {
@@ -101,8 +220,11 @@
             e.preventDefault();
             const formData = new FormData(e.target);
             const resultDiv = document.getElementById('result');
+            const button = e.target.querySelector('.submit-btn');
             
             try {
+                button.classList.add('loading');
+                
                 const response = await fetch('/process/brand', {
                     method: 'POST',
                     body: formData
@@ -120,6 +242,8 @@
             } catch (error) {
                 console.error('Error:', error);
                 resultDiv.innerHTML = `<p class="error">处理失败：${error.message}</p>`;
+            } finally {
+                button.classList.remove('loading');
             }
         });
     </script>

@@ -556,4 +556,47 @@ input[type="number"] {
     background-color: #d9edf7;
     color: #31708f;
     border: 1px solid #bce8f1;
+}
+
+/* 菜单布局样式 */
+.menu {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: 0;
+    padding: 20px;
+}
+
+.menu-item {
+    flex: 1;
+    min-width: 180px;
+    max-width: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: linear-gradient(135deg, #1a73e8, #0d47a1);
+    padding: 20px;
+    border-radius: 12px;
+    color: white;
+    text-decoration: none;
+    box-shadow: 0 4px 15px rgba(26, 115, 232, 0.2);
+    transition: all 0.3s ease;
+}
+
+.menu-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 20px rgba(26, 115, 232, 0.3);
+    background: linear-gradient(135deg, #1557b0, #0a3d8f);
+}
+
+/* 响应式布局 */
+@media (max-width: 900px) {
+    .menu {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .menu-item {
+        min-width: 160px;
+    }
 } 

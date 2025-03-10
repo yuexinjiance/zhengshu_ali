@@ -10,24 +10,24 @@ from docx.shared import Pt
 from docxtpl import DocxTemplate
 from datetime import datetime, timedelta
 import random
-from PyPDF2 import PdfMerger
-from docx2pdf import convert
 import re
 import asyncio
 import json
 from typing import AsyncGenerator, Dict
-from pypdf import PdfWriter, PdfReader
 import shutil
-import urllib.parse  # 添加这个导入
+import urllib.parse
 from pathlib import Path
-from docx.enum.text import WD_BREAK  # 添加这行导入
+from docx.enum.text import WD_BREAK
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from concurrent.futures import ThreadPoolExecutor
-import traceback  # 添加这个导入
+import traceback
 import zipfile
 import tempfile
 from starlette.background import BackgroundTask
+import glob
+from docx.shared import Inches
+from docx.enum.section import WD_SECTION
 
 app = FastAPI()
 
@@ -104,12 +104,12 @@ def change_all_brand(company_name, product_company, product_model, product_num_l
 def change_problem_file(problem_filename):
     document = Document(problem_filename)
 
-    document.paragraphs[60].runs[2].text = "异常"  # 更改报警功能的值
-    document.paragraphs[62].runs[3].text = "/    "  # 更改报警动作值
+    document.paragraphs[60].runs[2].text = "异常"
+    document.paragraphs[62].runs[3].text = "/    "
     document.paragraphs[62].runs[4].text = ""
-    document.paragraphs[65].runs[3].text = "/"  # 更改重复性
+    document.paragraphs[65].runs[3].text = "/"
     document.paragraphs[65].runs[4].text = ""
-    document.paragraphs[66].runs[3].text = "  /   "  # 更改响应时间
+    document.paragraphs[66].runs[3].text = "  /   "
     document.paragraphs[66].runs[4].text = ""
 
     tables = document.tables
@@ -977,15 +977,18 @@ async def download_folder(company_folder: str = Form(...)):
                 for file in files:
                     file_path = os.path.join(root, file)
                     arc_name = os.path.relpath(file_path, os.path.dirname(company_path))
-                    zipf.write(file_path, arc_name)
+                    # 确保文件名使用 UTF-8 编码
+                    zipf.write(file_path, arc_name.encode('utf-8').decode('utf-8'))
         
-        # 设置下载文件名
-        filename = f"{company_folder}.zip"
+        # URL 编码文件名
+        encoded_filename = urllib.parse.quote(f"{company_folder}.zip")
+        
+        # 设置响应头，使用 UTF-8 编码
         headers = {
-            'Content-Disposition': f'attachment; filename="{filename}"'
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
         }
         
-        # 返回 ZIP 文件
+        # 返回文件
         return FileResponse(
             zip_path,
             media_type='application/zip',
@@ -1011,6 +1014,130 @@ async def get_folders():
         ]
         folders.sort(reverse=True)  # 按日期倒序排序
         return folders
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/merge/docx")
+async def merge_docx(merge_folder: str = Form(...)):
+    merged_path = None
+    try:
+        # 获取当前工作目录
+        current_dir = os.getcwd()
+        company_path = os.path.join(current_dir, merge_folder)
+        
+        # 检查公司文件夹是否存在
+        if not os.path.exists(company_path):
+            raise HTTPException(
+                status_code=404,
+                detail=f"找不到公司文件夹：{merge_folder}"
+            )
+        
+        # 获取所有 .docx 文件
+        docx_files = [f for f in os.listdir(company_path) 
+                     if f.lower().endswith('.docx') and not f.startswith('~$')]
+        
+        if not docx_files:
+            raise HTTPException(
+                status_code=404,
+                detail="文件夹中没有找到 Word 文档"
+            )
+        
+        # 按文件名排序
+        docx_files.sort()
+        print(f"找到 {len(docx_files)} 个文件: {docx_files}")
+        
+        # 创建临时目录
+        temp_dir = tempfile.mkdtemp()
+        
+        # 创建合并后的文件路径
+        merged_path = os.path.join(temp_dir, f"{merge_folder}_merged.docx")
+        
+        # 使用 python-docx-template 合并文档
+        from docxcompose.composer import Composer
+        
+        # 使用第一个文档作为主文档
+        master = Document(os.path.join(company_path, docx_files[0]))
+        composer = Composer(master)
+        
+        # 添加其余文档
+        for i in range(1, len(docx_files)):
+            doc_path = os.path.join(company_path, docx_files[i])
+            print(f"合并文件 {i}/{len(docx_files)-1}: {doc_path}")
+            
+            # 添加分页符
+            composer.doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
+            
+            # 合并文档
+            doc2 = Document(doc_path)
+            composer.append(doc2)
+        
+        # 保存合并后的文档
+        composer.save(merged_path)
+        
+        # 设置响应头
+        filename = f"{merge_folder}_合并.docx"
+        encoded_filename = urllib.parse.quote(filename)
+        headers = {
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+        }
+        
+        # 返回合并后的文件
+        return FileResponse(
+            merged_path,
+            headers=headers,
+            media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            background=BackgroundTask(lambda: cleanup_temp_files(merged_path, temp_dir))
+        )
+        
+    except Exception as e:
+        # 清理临时文件
+        if merged_path and os.path.exists(merged_path):
+            try:
+                os.unlink(merged_path)
+            except:
+                pass
+        if 'temp_dir' in locals() and os.path.exists(temp_dir):
+            try:
+                shutil.rmtree(temp_dir)
+            except:
+                pass
+        
+        # 记录详细错误
+        error_detail = f"{str(e)}\n{traceback.format_exc()}"
+        print(f"合并文档错误: {error_detail}")
+        
+        raise HTTPException(status_code=500, detail=str(e))
+
+def cleanup_temp_files(file_path, temp_dir):
+    """清理临时文件和目录"""
+    try:
+        if os.path.exists(file_path):
+            os.unlink(file_path)
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+    except Exception as e:
+        print(f"清理临时文件时出错: {str(e)}")
+
+@app.get("/api/file_count")
+async def get_file_count(folder: str):
+    try:
+        # 获取当前工作目录
+        current_dir = os.getcwd()
+        folder_path = os.path.join(current_dir, folder)
+        
+        # 检查文件夹是否存在
+        if not os.path.exists(folder_path):
+            raise HTTPException(
+                status_code=404,
+                detail=f"找不到文件夹：{folder}"
+            )
+        
+        # 获取文件夹中的 .docx 文件数量
+        docx_files = [f for f in os.listdir(folder_path) 
+                     if f.lower().endswith('.docx') and not f.startswith('~$')]
+        
+        return {"count": len(docx_files)}
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

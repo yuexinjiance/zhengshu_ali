@@ -31,7 +31,9 @@ COPY static/ static/
 COPY templates/ templates/
 
 # 安装 Python 依赖
-RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+# 安装 Python 依赖
+RUN pip install --no-cache-dir -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/ \
+    && pip install --upgrade pip
 
 # 创建数据目录
 RUN mkdir -p /app/data
